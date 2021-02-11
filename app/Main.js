@@ -154,23 +154,23 @@ define([
               countyHighlight = countiesLayerView.highlight(filteredFS.features);
             });
           };*/
-          
+
 
           let countyHighlight = null;
-          let abortController = null;
-          const updateCountyFilterAndHighlight = searchGeom => {
-            countiesLayerView.filter = { geometry: searchGeom };
-            if (abortController) {
-              abortController.abort();
-            }
-            abortController = promiseUtils.createAbortController();
-            countiesLayerView.queryFeatures(countiesLayerView.filter.createQuery(), { signal: abortController.signal }).then(filteredFS => {
-              let newCountyHighlight = countiesLayerView.highlight(filteredFS.features);
-              countyHighlight && countyHighlight.remove();
-              countyHighlight = newCountyHighlight;
-              abortController = null;
+          const updateCountyFilterAndHighlight = promiseUtils.debounce((searchGeom) => {
+            return promiseUtils.create((resolve, reject) => {
+              if(searchGeom.points.length){
+                watchUtils.whenFalseOnce(countiesLayerView, 'updating', () => {
+                  countiesLayerView.filter = { geometry: searchGeom };
+                  countiesLayerView.queryFeatures(countiesLayerView.filter.createQuery()).then(filteredFS => {
+                    countyHighlight && countyHighlight.remove();
+                    countyHighlight = countiesLayerView.highlight(filteredFS.features);
+                    resolve();
+                  });
+                });
+              } else { resolve(); }
             });
-          };
+          });
 
 
           // COVID-19 CASES //
@@ -209,9 +209,9 @@ define([
 
                 const timeSlider = new TimeSlider({
                   container: 'time-slicer-container',
-                  view: view,
+                  //view: view,
                   mode: 'instant',
-                  playRate: 500,
+                  playRate: 1500,
                   fullTimeExtent: { start: startDate, end: endDate },
                   stops: { interval: { unit: 'days', value: 1 } },
                   values: [startDate]
@@ -245,9 +245,10 @@ define([
                     });
 
                     // UPDATE COUNTY POLYGON FILTER & HIGHLIGHT //
-                    requestAnimationFrame(() => {
-                      updateCountyFilterAndHighlight(searchGeom);
+                    updateCountyFilterAndHighlight(searchGeom).catch(error => {
+                      if(error.name !== 'AbortError'){ console.error(error); }
                     });
+
                   });
                 });
 
