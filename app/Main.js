@@ -203,6 +203,7 @@ define([
 
             // INITIAL TIME EXTENT //
             view.timeExtent = casesLayer.timeExtent = { start: startDate, end: date.add(startDate, 'minute', oneDayMinutes) };
+            casesLayer.timeInfo.useTime = true;
 
             view.whenLayerView(casesLayer).then(casesLayerView => {
               watchUtils.whenFalseOnce(casesLayerView, 'updating', () => {
@@ -219,7 +220,7 @@ define([
                 timeSlider.watch("timeExtent", timeExtent => {
 
                   // VIEW TIME EXTENT //
-                  view.timeExtent = {
+                  casesLayer.timeExtent = view.timeExtent = {
                     start: timeExtent.start,
                     end: date.add(timeExtent.start, 'minute', oneDayMinutes)
                   };
@@ -236,24 +237,27 @@ define([
                     // NUMBER OF COUNTIES //
                     countsLabel.innerHTML = timeFS.features.length.toLocaleString();
 
-                    // SEARCH GEOMETRY //
-                    const searchGeom = new Multipoint({
-                      spatialReference: view.spatialReference,
-                      points: timeFS.features.map(feature => {
-                        return [feature.geometry.x, feature.geometry.y];
-                      })
-                    });
+                    if(timeFS.features.length){
 
-                    // UPDATE COUNTY POLYGON FILTER & HIGHLIGHT //
-                    updateCountyFilterAndHighlight(searchGeom).catch(error => {
-                      if(error.name !== 'AbortError'){ console.error(error); }
-                    });
+                      // SEARCH GEOMETRY //
+                      const searchGeom = new Multipoint({
+                        spatialReference: view.spatialReference,
+                        points: timeFS.features.map(feature => {
+                          return [feature.geometry.x, feature.geometry.y];
+                        })
+                      });
 
+                      // UPDATE COUNTY POLYGON FILTER & HIGHLIGHT //
+                      updateCountyFilterAndHighlight(searchGeom).catch(error => {
+                        if(error.name !== 'AbortError'){ console.error(error); }
+                      });
+
+                    }
                   });
                 });
 
                 // START DAY-BASED ANIMATION //
-                watchUtils.whenFalseOnce(view, 'updating', () => { timeSlider.play(); });
+                watchUtils.whenFalseOnce(view, 'updating', () => { timeSlider.next(); });
 
               });
             });
